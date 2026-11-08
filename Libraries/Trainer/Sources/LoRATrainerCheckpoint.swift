@@ -303,8 +303,15 @@ extension LoRATrainerCheckpoint {
             return ($0, $0)
           })
         modelName = "dit"
+      case .qwenImage2_1:
+        // Same identity mapping as the separate-LoRA path in UNetFixedEncoder.
+        UNetMapping = [Int: Int](
+          uniqueKeysWithValues: (0..<32).map {
+            return ($0, $0)
+          })
+        modelName = "dit"
       case .auraflow, .kandinsky21, .svdI2v, .wurstchenStageC, .wurstchenStageB, .hunyuanVideo,
-        .wan21_1_3b, .wan21_14b, .hiDreamI1, .hiDreamO1, .qwenImage2_1, .wan22_5b, .ltx2, .ltx2_3,
+        .wan21_1_3b, .wan21_14b, .hiDreamI1, .hiDreamO1, .wan22_5b, .ltx2, .ltx2_3,
         .seedvr2_3b, .seedvr2_7b, .ideogram4:
         fatalError()
       case .ssd1b:
@@ -520,8 +527,15 @@ extension LoRATrainerCheckpoint {
             return ($0, $0)
           })
         modelName = "dit"
+      case .qwenImage2_1:
+        // Same identity mapping as the separate-LoRA path in UNetFixedEncoder.
+        UNetMapping = [Int: Int](
+          uniqueKeysWithValues: (0..<32).map {
+            return ($0, $0)
+          })
+        modelName = "dit"
       case .auraflow, .kandinsky21, .svdI2v, .wurstchenStageC, .wurstchenStageB, .hunyuanVideo,
-        .wan21_1_3b, .wan21_14b, .hiDreamI1, .hiDreamO1, .qwenImage2_1, .wan22_5b, .ltx2, .ltx2_3,
+        .wan21_1_3b, .wan21_14b, .hiDreamI1, .hiDreamO1, .wan22_5b, .ltx2, .ltx2_3,
         .seedvr2_3b, .seedvr2_7b, .ideogram4:
         fatalError()
       case .ssd1b:

@@ -4026,7 +4026,11 @@ private func runLoRATraining(context: DrawThingsCLIContext, _ options: LoRATrain
     resumeIfPossible: resumeCheckpoint?.isEmpty == false,
     usesFlashAttention: usesFlashAttention,
     imageInspector: inspectTrainingImage,
-    imageLoader: { loadTrainingTensor(url: $0, imageWidth: $1, imageHeight: $2) })
+    imageLoader: {
+      loadTrainingTensor(
+        url: $0, imageWidth: $1, imageHeight: $2,
+        preserveAlpha: modelSpecification.version == .qwenImage2_1)
+    })
   let tokenizerStack: [TextualInversionPoweredTokenizer & Tokenizer]
   switch trainer.version {
   case .v1:
@@ -4046,6 +4050,8 @@ private func runLoRATraining(context: DrawThingsCLIContext, _ options: LoRATrain
     tokenizerStack = [tokenizers.tokenizerQwen3]
   case .qwenImage:
     tokenizerStack = [tokenizers.tokenizerQwen25]
+  case .qwenImage2_1:
+    tokenizerStack = [tokenizers.tokenizerQwen3]
   case .zImage:
     tokenizerStack = [tokenizers.tokenizerQwen3]
   case .ernieImage:
@@ -4102,6 +4108,9 @@ private func runLoRATraining(context: DrawThingsCLIContext, _ options: LoRATrain
     trainableKeys = cosmosTrainableKeys(
       version: trainer.version, trainableLayers: requestedTrainableLayers,
       layerIndices: requestedLayerIndices)
+  case .qwenImage2_1:
+    trainableKeys = qwenImage2_1TrainableKeys(
+      trainableLayers: requestedTrainableLayers, layerIndices: requestedLayerIndices)
   default:
     trainableKeys = []
   }
@@ -5837,6 +5846,38 @@ private func qwenImageTrainableKeys(
   .flatMap { $0 }
   let indices = layerIndices.isEmpty ? Array(0..<60) : layerIndices
   for layerIndex in indices where layerIndex >= 0 && layerIndex < 60 {
+    keys.append(contentsOf: layerKeys.map { "\($0)-\(layerIndex)-" })
+  }
+  return keys
+}
+
+// The same block weights serve text and image tokens, so there are no separate context keys.
+// With nothing requested, train the mflux / ai-toolkit set: attention and MLP on all 32 blocks.
+private func qwenImage2_1TrainableKeys(
+  trainableLayers: Set<LoRATrainableLayer> = [], layerIndices: [Int] = []
+) -> [String] {
+  let trainableLayers =
+    trainableLayers.isEmpty
+    ? Set<LoRATrainableLayer>([.qkv, .out, .feedForward]) : trainableLayers
+  var keys = [String]()
+  if trainableLayers.contains(.latentsEmbedder) {
+    keys.append("x_embedder-")
+  }
+  if trainableLayers.contains(.contextEmbedder) {
+    keys.append(contentsOf: ["context_embedder_0-", "context_embedder_1-"])
+  }
+  if trainableLayers.contains(.projectOut) {
+    keys.append("linear-")
+  }
+  let layerKeys = [
+    trainableLayers.contains(.qkv) ? ["x_q", "x_k", "x_v"] : [],
+    trainableLayers.contains(.out) ? ["x_o"] : [],
+    trainableLayers.contains(.feedForward)
+      ? ["ffn_up_proj", "ffn_gate_proj", "ffn_down_proj"] : [],
+  ]
+  .flatMap { $0 }
+  let indices = layerIndices.isEmpty ? Array(0..<32) : layerIndices
+  for layerIndex in indices where layerIndex >= 0 && layerIndex < 32 {
     keys.append(contentsOf: layerKeys.map { "\($0)-\(layerIndex)-" })
   }
   return keys
